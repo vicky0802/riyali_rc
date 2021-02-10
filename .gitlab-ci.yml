@@ -1,0 +1,52 @@
+image: registry-gitlab.raccoongang.com/mobile-department/android/nice/buildbox
+
+before_script:
+  - export GRADLE_USER_HOME=`pwd`/.gradle
+
+stages:
+  - buildDebug
+  - buildDebugQA
+  - buildRelease
+
+buildDebug:
+  stage: buildDebug
+  script:
+    - bash gradlew assembleProdDebug
+  except:
+    - qa
+  tags:
+    - kube
+  cache:
+    key: "build-cache"
+    paths:
+      - .gradle/wrapper
+      - .gradle/caches
+
+buildDebugQA:
+  stage: buildDebugQA
+  only:
+    - qa
+  artifacts:
+    expire_in: 3 days
+    paths:
+      - OpenEdXMobile/build/outputs/apk/prod/debug
+  script:
+    - bash gradlew assembleProdDebug
+  tags:
+    - kube
+
+buildRelease:
+  stage: buildRelease
+  only:
+    - master
+  before_script:
+    - export GRADLE_USER_HOME=`pwd`/.gradle
+    - echo $KEYSTORE_FILE_BASE64 | base64 -di > chandi-keystore.keystore
+  script:
+    - bash gradlew assembleProdRelease
+  artifacts:
+    expire_in: 2 days
+    paths:
+      - OpenEdXMobile/build/outputs/apk/prod/release
+  tags:
+    - kube
